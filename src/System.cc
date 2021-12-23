@@ -397,8 +397,9 @@ void System::Shutdown()
         usleep(5000);
     }
 
-    if(mpViewer)
-        pangolin::BindToContext("ORB-SLAM2: Map Viewer");
+    // TODO: Currently disabled due to problems with newer Pangolin versions (see: https://github.com/raulmur/ORB_SLAM2/issues/547)
+    // if(mpViewer)
+    //    pangolin::BindToContext("ORB-SLAM2: Map Viewer");
 
 #ifdef REGISTER_TIMES
     mpTracker->PrintTimeStats();
