@@ -27,5 +27,5 @@ echo "Configuring and building ORB_SLAM3 ..."
 
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DLIBTORCH_PATH=PATH_TO_LIBTORCH
 make -j

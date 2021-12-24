@@ -31,6 +31,13 @@ else()
    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
 endif()
 
+if(LIBTORCH_PATH)
+  message("LIBTORCH_PATH: ${LIBTORCH_PATH}")
+  LIST(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_PATH})
+else()
+  message(FATAL_ERROR "LIBTORCH_PATH not set")
+endif()
+
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
 find_package(OpenCV 4.0)
@@ -47,6 +54,8 @@ MESSAGE(${OpenCV_VERSION})
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(realsense2)
+
+find_package(Torch REQUIRED)
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
@@ -85,6 +94,7 @@ src/CameraModels/KannalaBrandt8.cpp
 src/OptimizableTypes.cpp
 src/MLPnPsolver.cpp
 src/TwoViewReconstruction.cc
+src/DepthEstimator.cc
 include/System.h
 include/Tracking.h
 include/LocalMapping.h
@@ -113,6 +123,7 @@ include/OptimizableTypes.h
 include/MLPnPsolver.h
 include/TwoViewReconstruction.h
 include/Config.h
+include/DepthEstimator.h
 )
 
 add_subdirectory(Thirdparty/g2o)
@@ -121,6 +132,7 @@ target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
 ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
+${TORCH_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 -lboost_serialization
@@ -193,4 +205,11 @@ target_link_libraries(stereo_inertial_euroc ${PROJECT_NAME})
 add_executable(stereo_inertial_tum_vi
 Examples/Stereo-Inertial/stereo_inertial_tum_vi.cc)
 target_link_libraries(stereo_inertial_tum_vi ${PROJECT_NAME})
+
+# RGB MonoDepth examples
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGBMonoDepth)
+
+add_executable(rgb_monodepth
+Examples/RGBMonoDepth/rgb_monodepth.cc)
+target_link_libraries(rgb_monodepth ${PROJECT_NAME})
 

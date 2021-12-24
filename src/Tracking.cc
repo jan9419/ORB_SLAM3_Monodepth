@@ -28,6 +28,7 @@
 #include "Initializer.h"
 #include "G2oTypes.h"
 #include "Optimizer.h"
+#include "DepthEstimator.h"
 
 #include <iostream>
 
@@ -81,11 +82,22 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         mnFramesToResetIMU = mMaxFrames;
     }
 
+    // Load DepthEstimator parameters
+    bool b_parse_depth_est = true;
+    if(sensor==System::RGB_MONODEPTH)
+    {
+        b_parse_depth_est = ParseDepthEstimatorParamFile(fSettings);
+        if(!b_parse_depth_est)
+        {
+            std::cout << "*Error with the DepthEstimator parameters in the config file*" << std::endl;
+        }
+    }
+
     mbInitWith3KFs = false;
 
     mnNumDataset = 0;
 
-    if(!b_parse_cam || !b_parse_orb || !b_parse_imu)
+    if(!b_parse_cam || !b_parse_orb || !b_parse_imu || !b_parse_depth_est)
     {
         std::cerr << "**ERROR in the config file, the format is not correct**" << std::endl;
         try
@@ -946,7 +958,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage &fSettings)
         std::cerr << "Check an example configuration file with the desired sensor" << std::endl;
     }
 
-    if(mSensor==System::STEREO || mSensor==System::IMU_STEREO || mSensor==System::RGBD)
+    if(mSensor==System::STEREO || mSensor==System::IMU_STEREO || mSensor==System::RGBD || mSensor==System::RGB_MONODEPTH)
     {
         cv::FileNode node = fSettings["Camera.bf"];
         if(!node.empty() && node.isReal())
@@ -980,7 +992,7 @@ bool Tracking::ParseCamParamFile(cv::FileStorage &fSettings)
     else
         cout << "- color order: BGR (ignored if grayscale)" << endl;
 
-    if(mSensor==System::STEREO || mSensor==System::RGBD || mSensor==System::IMU_STEREO)
+    if(mSensor==System::STEREO || mSensor==System::RGBD || mSensor==System::IMU_STEREO || mSensor==System::RGB_MONODEPTH)
     {
         float fx = mpCamera->getParameter(0);
         cv::FileNode node = fSettings["ThDepth"];
@@ -1213,6 +1225,84 @@ bool Tracking::ParseIMUParamFile(cv::FileStorage &fSettings)
     return true;
 }
 
+bool Tracking::ParseDepthEstimatorParamFile(cv::FileStorage &fSettings)
+{
+    bool b_miss_params = false;
+    int inputWidth, inputHeight;
+    float scaleFactor;
+
+    const string encoderPath = fSettings["DepthEstimator.encoderPath"];
+    if (encoderPath.empty())
+    {
+        std::cerr << "*DepthEstimator.encoderPath parameter doesn't exist*" << std::endl;
+        b_miss_params = true;
+    }
+
+    const string decoderPath = fSettings["DepthEstimator.decoderPath"];
+    if (decoderPath.empty())
+    {
+        std::cerr << "*DepthEstimator.decoderPath parameter doesn't exist*" << std::endl;
+        b_miss_params = true;
+    }
+
+    cv::FileNode node = fSettings["DepthEstimator.inputWidth"];
+    if(!node.empty() && node.isInt())
+    {
+        inputWidth = node.operator int();
+    }
+    else
+    {
+        std::cerr << "*DepthEstimator.inputWidth parameter doesn't exist or is not an integer*" << std::endl;
+        b_miss_params = true;
+    }
+
+    node = fSettings["DepthEstimator.inputHeight"];
+    if(!node.empty() && node.isInt())
+    {
+        inputHeight = node.operator int();
+    }
+    else
+    {
+        std::cerr << "*DepthEstimator.inputHeight parameter doesn't exist or is not an integer*" << std::endl;
+        b_miss_params = true;
+    }
+
+    const string device = fSettings["DepthEstimator.device"];
+    if (device.empty() || (device != "cpu" && device != "gpu"))
+    {
+        std::cerr << "*DepthEstimator.device parameter doesn't exist or is not set to: cpu, gpu*" << std::endl;
+        b_miss_params = true;
+    }
+
+    node = fSettings["DepthEstimator.scaleFactor"];
+    if(!node.empty() && node.isReal())
+    {
+        scaleFactor = node.real();
+    }
+    else
+    {
+        std::cerr << "*DepthEstimator.scaleFactor parameter doesn't exist or is not a real number*" << std::endl;
+        b_miss_params = true;
+    }
+
+    if(b_miss_params)
+    {
+        return false;
+    }
+
+    mpDepthEstimator = std::make_shared<DepthEstimator>(encoderPath,decoderPath,inputWidth,inputHeight,device,scaleFactor);
+
+    cout << endl << "Depth Estimator Parameters: " << endl;
+    cout << "- Ecoder Path: " << encoderPath << endl;
+    cout << "- Decoder Path: " << decoderPath << endl;
+    cout << "- Input Width: " << inputWidth << endl;
+    cout << "- Input Height: " << inputHeight << endl;
+    cout << "- Device: " << device << endl;
+    cout << "- Stereo Scale Factor: " << scaleFactor << endl;
+
+    return true;
+}
+
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
 {
     mpLocalMapper=pLocalMapper;
@@ -1380,6 +1470,41 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp,
 
     return mCurrentFrame.mTcw.clone();
 }
+
+
+cv::Mat Tracking::GrabImageRGBMonoDepth(const cv::Mat &imRGB,const double &timestamp, const string& filename)
+{
+    mImGray = imRGB;
+
+    if(mImGray.channels()==3)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,cv::COLOR_RGB2GRAY);
+        else
+            cvtColor(mImGray,mImGray,cv::COLOR_BGR2GRAY);
+    }
+    else if(mImGray.channels()==4)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,cv::COLOR_RGBA2GRAY);
+        else
+            cvtColor(mImGray,mImGray,cv::COLOR_BGRA2GRAY);
+    }
+
+    mCurrentFrame = Frame(mImGray,imRGB,timestamp,mpDepthEstimator,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth,mpCamera);
+
+    mCurrentFrame.mNameFile = filename;
+    mCurrentFrame.mnDataset = mnNumDataset;
+
+#ifdef REGISTER_TIMES
+    vdORBExtract_ms.push_back(mCurrentFrame.mTimeORB_Ext);
+#endif
+
+    Track();
+
+    return mCurrentFrame.mTcw.clone();
+}
+
 
 
 void Tracking::GrabImuData(const IMU::Point &imuMeasurement)
@@ -1756,7 +1881,7 @@ void Tracking::Track()
 
     if(mState==NOT_INITIALIZED)
     {
-        if(mSensor==System::STEREO || mSensor==System::RGBD || mSensor==System::IMU_STEREO)
+        if(mSensor==System::STEREO || mSensor==System::RGBD || mSensor==System::IMU_STEREO || mSensor==System::RGB_MONODEPTH)
             StereoInitialization();
         else
         {

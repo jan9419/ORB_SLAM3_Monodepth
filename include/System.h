@@ -86,7 +86,8 @@ public:
         STEREO=1,
         RGBD=2,
         IMU_MONOCULAR=3,
-        IMU_STEREO=4
+        IMU_STEREO=4,
+        RGB_MONODEPTH=5
     };
 
     // File type
@@ -115,6 +116,11 @@ public:
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp, const vector<IMU::Point>& vImuMeas = vector<IMU::Point>(), string filename="");
+
+    // Process the given monocular frame. Depthmap is estimated from the RGB frame using a deep neural network.
+    // Input image: RGB (CV_8UC3). RGB is converted to grayscale for ORB extraction.
+    // Returns the camera pose (empty if tracking fails).
+    cv::Mat TrackRGBMonoDepth(const cv::Mat &im, const double &timestamp, const string& filename="");
 
 
     // This stops local mapping thread (map building) and performs only camera tracking.
