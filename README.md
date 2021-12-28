@@ -1,9 +1,9 @@
 # ORB_SLAM3_Monodepth
 
 ## Introduction
-This repository was forked from [ORB-SLAM3] (https://https://github.com/UZ-SLAMLab/ORB_SLAM3).
+This repository was forked from [ORB-SLAM3] (https://github.com/UZ-SLAMLab/ORB_SLAM3).
 ORB-SLAM3-Monodepth is an extended version of ORB-SLAM3 that utilizes a deep monocular depth estimation network.
-For this pre-trained models of [Monodepth2] (https://https://github.com/nianticlabs/monodepth2) are used.
+For this pre-trained models of [Monodepth2] (https://github.com/nianticlabs/monodepth2) are used.
 The monocular depth network is deployed using LibTorch and executed in an asynchronous thread in parallel with the ORB feature detection to optimize runtime.
 The estimated metric depth is used to initialize map points and in the cost function similar to the stereo/RGBD case, and can significantly reduce the scale drift in the monocular case.
 This approach is based on DVSO and CNN-SVO, which have extended DSO and SVO, respectively, with a monocular depth network.
