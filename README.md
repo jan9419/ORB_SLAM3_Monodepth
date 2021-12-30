@@ -82,12 +82,12 @@ This will create **libORB_SLAM3_Monodepth.so**  at *lib* folder and the executab
 
 1. Download the dataset (color images) from http://www.cvlibs.net/datasets/kitti/eval_odometry.php 
 
-2. Export pre-trained Monodepth2 models (trained on the KITTI dataset) to torchscript models. For this please add the Monodepth2 repository to the `PYTHONPATH` environment variable. Furthermore, the decoder in the Monodepth2 repository needs to be modified to return the last tuple element (`self.outputs[("disp", 0)]`). Note that when exporting the torchscript models, the same device (cpu or cuda) must be selected as for deployment (`DepthEstimator.device` (cpu or gpu)).  
+2. Export pre-trained Monodepth2 models (trained on the KITTI dataset) to TorchScript models. For this please add the Monodepth2 repository to the `PYTHONPATH` environment variable. Furthermore, the depth decoder in the Monodepth2 repository (`networks/depth_decoder.py`) needs to be modified to return the last dictionary element (`self.outputs[("disp", 0)]`). Note that when exporting the TorchScript models, the same device (cpu or cuda) must be selected as for deployment (`DepthEstimator.device` (cpu or gpu)).  
 ```
 python tools/export_models.py --input_encoder_path PATH_TO_MONODEPTH_PRETRAINED_MODEL/encoder.pth --input_decoder_path PATH_TO_MONODEPTH_PRETRAINED_MODEL/decoder.pth --output_encoder_path tools/encoder.pt --output_decoder_path tools/decoder.pt --device cuda
 ```
 
-3. Set the correct path to the exported torchscript models in `KITTIX.yaml` (`DepthEstimator.encoderPath` and `DepthEstimator.decoderPath`).
+3. Set the correct path to the exported TorchScript models in `KITTIX.yaml` (`DepthEstimator.encoderPath` and `DepthEstimator.decoderPath`).
 
 4. Execute the following command. Change `KITTIX.yaml` by KITTI00-02.yaml, KITTI03.yaml or KITTI04-12.yaml for sequence 0 to 2, 3, and 4 to 12 respectively. Change `PATH_TO_DATASET_FOLDER` to the uncompressed dataset folder. Change `SEQUENCE_NUMBER` to 00, 01, 02,.., 11. 
 ```

@@ -33,7 +33,7 @@ def convert(input_encoder, input_decoder, output_encoder, output_decoder, device
         traced_script_module_enc.save(output_encoder)
         # Save decoder torchscript model
         example_features = encoder(example_input)
-        # Please note: To avoid errors the decoder in the Monodepth2 repository needs to be adjusted to return the last tuple element (self.outputs[("disp",0)])
+        # Please note: To avoid errors the depth decoder (networks/depth_decoder.py) in the Monodepth2 repository needs to be adjusted to return the last dict element (self.outputs[("disp",0)])
         traced_script_module_dec = torch.jit.trace(decoder, (example_features,), strict=True)
         traced_script_module_dec.save(output_decoder)
 
